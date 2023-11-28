@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use Test::More;
+use Plack;    # to load Plack::VERSION
 use Plack::Builder;
 
 BEGIN {
@@ -28,7 +29,12 @@ sub build_handler {
     };
 }
 
-my $env = {};
+my $env = {
+    REQUEST_METHOD    => 'GET',
+    'psgi.url_scheme' => 'http',
+    HTTP_HOST         => 'example.com',
+    REQUEST_URI       => '/test',
+};
 
 build_handler()->($env);
 
