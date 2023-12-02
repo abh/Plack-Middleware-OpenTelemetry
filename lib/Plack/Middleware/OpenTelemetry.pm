@@ -2,11 +2,12 @@ package Plack::Middleware::OpenTelemetry;
 
 # ABSTRACT: Plack middleware to setup OpenTelemetry tracing
 
+use v5.36.0;
 use strict;
 use warnings;
-use experimental 'signatures';
+use feature 'signatures';
 use parent qw(Plack::Middleware);
-use Plack::Util::Accessor qw(tracer);
+use Plack::Util::Accessor qw(resource_attributes);
 use OpenTelemetry -all;
 use OpenTelemetry::Constants qw( SPAN_KIND_SERVER SPAN_STATUS_ERROR SPAN_STATUS_OK );
 use OpenTelemetry::Common 'config';
@@ -16,26 +17,36 @@ use URI;
 
 sub prepare_app {
     my $self = shift;
-
-    unless ($self->tracer) {
-        $self->tracer({name => config('SERVICE_NAME') // 'unknown_service'});
-    }
 }
 
 sub call {
     my ($self, $env) = @_;
 
-    my $tracer = otel_tracer_provider->tracer(%{$self->tracer});
+    my $tracer =
+      otel_tracer_provider->tracer(schema_url => 'https://opentelemetry.io/schemas/1.21.0');
 
     my $method = $env->{REQUEST_METHOD};
+    my $scheme = $env->{HTTP_X_FORWARDED_PROTO} || $env->{"psgi.url_scheme"};
+    my $url    = URI->new($scheme . '://' . $env->{HTTP_HOST} . $env->{REQUEST_URI});
 
-    my $url = URI->new($env->{'psgi.url_scheme'} . '://' . $env->{HTTP_HOST} . $env->{REQUEST_URI});
+    my $context = otel_propagator->extract(
+        $env, undef,
+        sub ($carrier, $key) {
+            $carrier->{'HTTP_' . uc $key};
+        },
+    );
 
-    my $context = otel_propagator->extract($env, undef,
-        sub ($carrier, $key) { $carrier->{'HTTP_' . uc $key} },);
+    my $resource;
+    if (my $a = $self->resource_attributes) {
+        my $resource = OpenTelemetry::SDK::Resource->new()
+          ->merge(OpenTelemetry::SDK::Resource->new(empty => 1, attributes => $a));
+    }
 
     my $span = $tracer->create_span(
-        name       => "$method request",
+        name => "$method request",
+
+        ($resource ? (resource => $resource) : ()),
+
         parent     => $context,
         kind       => SPAN_KIND_SERVER,
         attributes => {
@@ -46,9 +57,9 @@ sub call {
             "http.request.method" => $method,
             "user_agent.original" => $env->{HTTP_USER_AGENT},
             "server.address"      => $env->{HTTP_HOST},
-            "url.full"            => "$url",
-            "url.scheme"          => ($env->{HTTP_X_FORWARDED_PROTO} || $env->{"psgi.url_scheme"}),
-            "url.path"            => $env->{PATH_INFO},
+            "url.full"            => $url->as_string,
+            "url.scheme"          => $scheme,
+            "url.path"            => $url->path,
             ($url->query ? ("url.query" => $url->query) : ()),
 
             # todo: "http.request_content_length"
@@ -60,7 +71,12 @@ sub call {
     dynamically otel_current_context = $context;
 
     try {
-        my $res = $self->app->($env);
+        my $res = eval { $self->app->($env) };
+
+        if ($@) {
+            warn "request returned: $@";
+            die $@;
+        }
 
         if (ref($res) && ref($res) eq 'ARRAY') {
             set_status_code($span, $res);
@@ -83,6 +99,7 @@ sub call {
         );
     }
     catch ($error) {
+        warn "got request error: $error";
         my $message = $error;
         $span->record_exception($error)->set_attribute('http.status_code' => 500)
           ->set_status(SPAN_STATUS_ERROR, $message)->end;
@@ -123,11 +140,16 @@ span for the request.
 
 =over
 
-=item tracer
+=item resource_attributes
 
-If specified the attributes passed to the tracer.
+Optional attributes to be added to the resource in the created spans.
 
 =back
+
+=head1 NOTES
+
+The L<Net::Async::HTTP::Server> plackup server is recommended:
+C<plackup -s Net::Async::HTTP::Server>
 
 =head1 SEE ALSO
 
