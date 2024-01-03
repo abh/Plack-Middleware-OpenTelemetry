@@ -7,7 +7,7 @@ use strict;
 use warnings;
 use feature 'signatures';
 use parent qw(Plack::Middleware);
-use Plack::Util::Accessor qw(resource_attributes);
+use Plack::Util::Accessor qw(resource_attributes include_client_errors);
 use OpenTelemetry -all;
 use OpenTelemetry::Constants qw( SPAN_KIND_SERVER SPAN_STATUS_ERROR SPAN_STATUS_OK );
 use OpenTelemetry::Common 'config';
@@ -79,7 +79,7 @@ sub call {
         }
 
         if (ref($res) && ref($res) eq 'ARRAY') {
-            set_status_code($span, $res);
+            $self->set_status_code($span, $res);
             my $content_length = Plack::Util::content_length($res->[2]);
             $span->set_attribute("http.response_content_length", $content_length);
             $span->end();
@@ -101,19 +101,21 @@ sub call {
     catch ($error) {
         warn "got request error: $error";
         my $message = $error;
-        $span->record_exception($error)->set_attribute('http.status_code' => 500)
+        $span->record_exception($error)->set_attribute('http.response.status_code' => 500)
           ->set_status(SPAN_STATUS_ERROR, $message)->end;
         die $error;
     }
 }
 
-sub set_status_code ($span, $res) {
+sub set_status_code ($self, $span, $res) {
     my $status_code = $res->[0] or return;
     $span->set_attribute("http.response.status_code", $status_code);
-    if ($status_code >= 400 and $status_code <= 599) {
+    if (   $status_code >= 400 and $self->include_client_errors
+        or $status_code >= 500)
+    {
         $span->set_status(SPAN_STATUS_ERROR);
     }
-    elsif ($status_code >= 200 and $status_code <= 399) {
+    elsif ($status_code >= 100) {
         $span->set_status(SPAN_STATUS_OK);
     }
 }
@@ -122,13 +124,13 @@ sub set_status_code ($span, $res) {
 
 =head1 NAME
 
-Plack::Middleware::OpenTelemetry - Plack middleware to handle X-Forwarded-For headers
+Plack::Middleware::OpenTelemetry - Plack middleware to setup OpenTelemetry spans
 
 =head1 SYNOPSIS
 
   builder {
     enable "Plack::Middleware::OpenTelemetry",
-      tracer => {name => "my-app", "version" => "1.2"};
+      include_client_errors => 0;
   };
 
 =head1 DESCRIPTION
@@ -140,9 +142,10 @@ span for the request.
 
 =over
 
-=item resource_attributes
+=item include_client_errors
 
-Optional attributes to be added to the resource in the created spans.
+By default client errors (HTTP status 400-499) don't set span status to
+"error". Enable this option to include them as errors.
 
 =back
 
