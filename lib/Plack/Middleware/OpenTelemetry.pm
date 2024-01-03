@@ -55,7 +55,7 @@ sub call {
             # https://opentelemetry.io/docs/specs/semconv/http/http-spans/
             "client.address"      => $env->{REMOTE_ADDR},
             "http.request.method" => $method,
-            "user_agent.original" => $env->{HTTP_USER_AGENT},
+            "user_agent.original" => ($env->{HTTP_USER_AGENT} || ''),
             "server.address"      => $env->{HTTP_HOST},
             "url.full"            => $url->as_string,
             "url.scheme"          => $scheme,
