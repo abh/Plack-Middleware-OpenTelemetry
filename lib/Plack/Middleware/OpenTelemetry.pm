@@ -90,7 +90,7 @@ sub call {
             $res,
             sub {
                 my $res = shift;
-                set_status_code($span, $res);
+                $self->set_status_code($span, $res);
                 my $content_length = Plack::Util::content_length($res->[2]);
                 $span->set_attribute("http.response_content_length", $content_length);
                 $span->set_attribute("plack.callback",               "true");
