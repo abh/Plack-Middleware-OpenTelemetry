@@ -1,4 +1,7 @@
 {{$NEXT}}
+  - Fix key for http.response.body.size
+  - Fix http.response.body.size for callback responses
+    (thanks to James Wright for help on both)
 
 0.240030 -- Tue Jan 02 23:56:16 PST 2024
   - Add include_client_errors option

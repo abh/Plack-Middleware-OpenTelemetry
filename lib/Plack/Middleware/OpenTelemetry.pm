@@ -53,6 +53,7 @@ sub call {
             "plack.version" => "$Plack::VERSION",
 
             # https://opentelemetry.io/docs/specs/semconv/http/http-spans/
+            # https://opentelemetry.io/blog/2023/http-conventions-declared-stable/
             "client.address"      => $env->{REMOTE_ADDR},
             "http.request.method" => $method,
             "user_agent.original" => ($env->{HTTP_USER_AGENT} || ''),
@@ -62,7 +63,7 @@ sub call {
             "url.path"            => $url->path,
             ($url->query ? ("url.query" => $url->query) : ()),
 
-            # todo: "http.request_content_length"
+            # todo: "http.request.body.size"
 
         },
     );
@@ -81,7 +82,7 @@ sub call {
         if (ref($res) && ref($res) eq 'ARRAY') {
             $self->set_status_code($span, $res);
             my $content_length = Plack::Util::content_length($res->[2]);
-            $span->set_attribute("http.response_content_length", $content_length);
+            $span->set_attribute("http.response.body.size", $content_length);
             $span->end();
             return $res;
         }
@@ -91,10 +92,26 @@ sub call {
             sub {
                 my $res = shift;
                 $self->set_status_code($span, $res);
+                $span->set_attribute("plack.callback", "true");
+
                 my $content_length = Plack::Util::content_length($res->[2]);
-                $span->set_attribute("http.response_content_length", $content_length);
-                $span->set_attribute("plack.callback",               "true");
-                $span->end();
+                if (defined $content_length) {
+                    $span->set_attribute("http.response.body.size", $content_length);
+                    $span->end();
+                    return;
+                }
+
+                $content_length = 0;
+
+                return sub {
+                    my $chunk = shift;
+                    unless (defined $chunk) {
+                        $span->set_attribute("http.response.body.size", $content_length);
+                        $span->end();
+                    }
+                    $content_length += length($chunk);
+                    return $chunk;
+                }
             }
         );
     }
