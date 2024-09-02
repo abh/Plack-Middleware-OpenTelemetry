@@ -132,9 +132,6 @@ sub set_status_code ($self, $span, $res) {
     {
         $span->set_status(SPAN_STATUS_ERROR);
     }
-    elsif ($status_code >= 100) {
-        $span->set_status(SPAN_STATUS_OK);
-    }
 }
 
 1;
