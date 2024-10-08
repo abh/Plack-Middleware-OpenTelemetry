@@ -136,6 +136,8 @@ sub set_status_code ($self, $span, $res) {
 
 1;
 
+=encoding utf8
+
 =head1 NAME
 
 Plack::Middleware::OpenTelemetry - Plack middleware to setup OpenTelemetry spans
