@@ -7,6 +7,7 @@ use strict;
 use warnings;
 use feature 'signatures';
 use parent qw(Plack::Middleware);
+use Plack;
 use Plack::Util::Accessor qw(resource_attributes include_client_errors);
 use OpenTelemetry -all;
 use OpenTelemetry::Constants qw( SPAN_KIND_SERVER SPAN_STATUS_ERROR SPAN_STATUS_OK );
