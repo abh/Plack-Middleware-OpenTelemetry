@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+0.252270 -- Thu Aug 14 23:22:12 -04 2025
   - Fix variable shadowing bug in resource creation (thanks @abraxxa)
   - Ensure Plack is loaded for resource version data (José Joaquín Atria)
   - Fix pod encoding error (AnaTofuZ)
