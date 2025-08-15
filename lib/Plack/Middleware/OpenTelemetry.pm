@@ -2,10 +2,10 @@ package Plack::Middleware::OpenTelemetry;
 
 # ABSTRACT: Plack middleware to setup OpenTelemetry tracing
 
-use v5.36.0;
+use v5.30.0;
 use strict;
 use warnings;
-use feature 'signatures';
+use experimental 'signatures';
 use parent qw(Plack::Middleware);
 use Plack;
 use Plack::Util::Accessor qw(resource_attributes include_client_errors);
