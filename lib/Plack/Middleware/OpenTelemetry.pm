@@ -39,7 +39,7 @@ sub call {
 
     my $resource;
     if (my $a = $self->resource_attributes) {
-        my $resource = OpenTelemetry::SDK::Resource->new()
+        $resource = OpenTelemetry::SDK::Resource->new()
           ->merge(OpenTelemetry::SDK::Resource->new(empty => 1, attributes => $a));
     }
 
