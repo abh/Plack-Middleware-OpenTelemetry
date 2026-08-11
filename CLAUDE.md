@@ -31,7 +31,6 @@ This is a Perl distribution that provides OpenTelemetry tracing middleware for P
 - OpenTelemetry (>= 0.018) - OpenTelemetry Perl SDK
 - OpenTelemetry::SDK (>= 0.020) - OpenTelemetry SDK implementation
 - Feature::Compat::Try - Modern try/catch syntax
-- Syntax::Keyword::Dynamically - Dynamic scope management
 
 ### Middleware Functionality
 The middleware automatically:

@@ -12,7 +12,6 @@ use Plack::Util::Accessor qw(resource_attributes include_client_errors);
 use OpenTelemetry -all;
 use OpenTelemetry::Constants qw( SPAN_KIND_SERVER SPAN_STATUS_ERROR SPAN_STATUS_OK );
 use OpenTelemetry::Common 'config';
-use Syntax::Keyword::Dynamically;
 use Feature::Compat::Try;
 use URI;
 
@@ -69,8 +68,9 @@ sub call {
         },
     );
 
+    my $previous_context = otel_current_context;
     $context = otel_context_with_span($span, $context);
-    dynamically otel_current_context = $context;
+    otel_current_context = $context;
 
     try {
         my $res = eval { $self->app->($env) };
@@ -85,6 +85,7 @@ sub call {
             my $content_length = Plack::Util::content_length($res->[2]);
             $span->set_attribute("http.response.body.size", $content_length);
             $span->end();
+            otel_current_context = $previous_context;
             return $res;
         }
 
@@ -99,6 +100,7 @@ sub call {
                 if (defined $content_length) {
                     $span->set_attribute("http.response.body.size", $content_length);
                     $span->end();
+                    otel_current_context = $previous_context;
                     return;
                 }
 
@@ -111,6 +113,7 @@ sub call {
                         $span->end();
                     }
                     $content_length += length($chunk);
+                    otel_current_context = $previous_context;
                     return $chunk;
                 }
             }
@@ -121,6 +124,7 @@ sub call {
         my $message = $error;
         $span->record_exception($error)->set_attribute('http.response.status_code' => 500)
           ->set_status(SPAN_STATUS_ERROR, $message)->end;
+        otel_current_context = $previous_context;
         die $error;
     }
 }
