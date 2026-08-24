@@ -1,5 +1,7 @@
 {{$NEXT}}
-  - Fix context propagation for streaming responses
+  - Fix context propagation for streaming responses (thanks @abraxxa)
+  - Remove duplicate repository URL from the distribution metadata
+    (thanks @abraxxa)
 
 0.252280 -- Fri Aug 15 23:49:53 -04 2025
   - Lower minimum Perl version requirement from 5.36 to 5.30
