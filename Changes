@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+0.262410 -- Fri Aug 28 21:28:30 PDT 2026
   - Fix context propagation for streaming responses (thanks @abraxxa)
   - Remove duplicate repository URL from the distribution metadata
     (thanks @abraxxa)
